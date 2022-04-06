@@ -21,22 +21,72 @@ type ReqUserId struct {
 	ID string `path:"_id"`
 }
 
-type User struct {
-	ID       string `json:"_id"`
-	Avatar   string `json:"avatar,optional"`
-	Birthday string `json:"birthday,optional"`
-	Blog     string `json:"blog,optional"`
-	City     string `json:"city,optional"`
-	Email    string `json:"email,optional"`
-	Name     string `json:"name,optional"`
-	Phone    int64  `json:"phone,optional"`
-	RealName string `json:"real_name,optional"`
-	Summary  string `json:"summary,optional"`
+type RespUser struct {
+	ID        string   `json:"_id"`
+	Avatar    string   `json:"avatar"`
+	Birthday  int64    `json:"birthday"`
+	Blog      string   `json:"blog"`
+	City      string   `json:"city"`
+	Email     string   `json:"email"`
+	Followers int64    `json:"followers"`
+	Following int64    `json:"following"`
+	Name      string   `json:"name"`
+	Phone     int64    `json:"phone"`
+	RealName  string   `json:"real_name"`
+	Skills    []string `json:"skills"`
+	Summary   string   `json:"summary"`
 }
 
-type CommUserResp struct {
-	Ok    bool   `json:"ok"`
-	Error string `json:"error"`
+type ReqUser struct {
+	ID       string   `path:"_id"`
+	Avatar   *string  `json:"avatar,optional"`
+	Birthday *int64   `json:"birthday,optional"`
+	City     *string  `json:"city,optional"`
+	Email    *string  `json:"email,optional"`
+	Name     *string  `json:"name,optional"`
+	Phone    *int64   `json:"phone,optional"`
+	RealName *string  `json:"real_name,optional"`
+	Summary  *string  `json:"summary,optional"`
+	Skills   []string `json:"skills,optional"`
+	Blog     *string  `json:"blog,optional"`
+}
+
+type InterviewHardStatus struct {
+	Difficulty string `json:"difficulty"`
+	Count      int64  `json:"count"`
+	Total      int64  `json:"total"`
+}
+
+type ReqUsers struct {
+	ID       string `path:"_id"`
+	Search   string `form:"search,optional"`
+	PageNo   int    `form:"page_no"`
+	PageSize int    `form:"page_size"`
+}
+
+type OtherUser struct {
+	ID      string `json:"_id"`
+	Avatar  string `json:"avatar"`
+	Name    string `json:"name"`
+	Summary string `json:"summary"`
+}
+
+type ReqStarInterviews struct {
+	ID       string   `path:"_id"`
+	Tags     []string `form:"tags,optional"`
+	Search   string   `form:"search,optional"`
+	PageNo   int      `form:"page_no"`
+	PageSize int      `form:"page_size"`
+}
+
+type RespStarInterviews struct {
+	ID          string `json:"_id"`
+	Title       string `json:"title"`
+	UpdatedTime int64  `json:"updated_time"`
+}
+
+type ReqStarInterviewsID struct {
+	ID string `path:"_id"`
 }
 
 type ReqInterviewId struct {
@@ -53,7 +103,7 @@ type Interview struct {
 	Author      Author   `json:"author"`
 	ClickNum    int64    `json:"click_num,default=0"`
 	Good        int64    `json:"good,default=0"`
-	HardStatus  string   `json:"hard_status"`
+	HardStatus  string   `json:"hard_status,options=hard,medium,easy"`
 	HotNum      int64    `json:"hot_num,default=0"`
 	Summary     string   `json:"summary"`
 	Tags        []string `json:"tags"`
@@ -72,7 +122,7 @@ type Interview_detail struct {
 
 type ReqInterviewUpdate struct {
 	ID         string   `path:"_id"`
-	HardStatus *string  `json:"hard_status,optional"`
+	HardStatus *string  `json:"hard_status,optional,options=hard,medium,easy"`
 	Summary    *string  `json:"summary,optional"`
 	Tags       []string `json:"tags,optional"`
 	Title      *string  `json:"title,optional"`
@@ -80,7 +130,7 @@ type ReqInterviewUpdate struct {
 }
 
 type ReqInterviewAdd struct {
-	HardStatus string   `json:"hard_status"`
+	HardStatus string   `json:"hard_status,options=hard,medium,easy"`
 	Summary    string   `json:"summary,omitempty"`
 	Tags       []string `json:"tags"`
 	Title      string   `json:"title"`
@@ -88,8 +138,8 @@ type ReqInterviewAdd struct {
 }
 
 type ReqInterviews struct {
-	Tags   []string `json:"tags"`
-	Search string   `json:"search"`
+	Tags   []string `form:"tags,optional"`
+	Search string   `form:"search,optional"`
 	CommonPage
 }
 
@@ -99,8 +149,8 @@ type CommInterviewsResp struct {
 }
 
 type CommonPage struct {
-	PageNo   int `json:"page_no"`
-	PageSize int `json:"page_size"`
+	PageNo   int `form:"page_no"`
+	PageSize int `form:"page_size"`
 }
 
 type RespInterviewsTags struct {

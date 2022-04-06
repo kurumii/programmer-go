@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/zeromicro/go-zero/core/stores/mongo"
@@ -10,8 +11,13 @@ import (
 type UserModel interface {
 	Insert(ctx context.Context, data *User) error
 	FindOne(ctx context.Context, id string) (*User, error)
+	FindBySearch(ctx context.Context, search string, pageNo int, pageSize int) (*[]User, error)
+	FindUsersBySearchAndIds(ctx context.Context, search string, ids []bson.ObjectId, pageNo int, pageSize int) (*[]User, error)
 	Update(ctx context.Context, data *User) error
+	UpdateFields(ctx context.Context, id string, data *map[string]interface{}) error
+	AddUserToSetByID(ctx context.Context, id string, key string, valueID string) error
 	Delete(ctx context.Context, id string) error
+	DeleteUserToSetByID(ctx context.Context, id string, key string, valueID string) error
 	FindOneByOpenId(ctx context.Context, openId string) (*User, error)
 }
 
@@ -63,6 +69,77 @@ func (m *defaultUserModel) FindOne(ctx context.Context, id string) (*User, error
 	}
 }
 
+func (m *defaultUserModel) FindBySearch(ctx context.Context, search string, pageNo int, pageSize int) (*[]User, error) {
+	session, err := m.TakeSession()
+	if err != nil {
+		return nil, err
+	}
+
+	defer m.PutSession(session)
+	var data []User
+	filter := bson.M{}
+	if search != ""{
+		filter["title"]= bson.M{"$regex": bson.RegEx{
+			Pattern: fmt.Sprintf("%s", search),
+			Options: "im",
+		}}
+	}
+	count, err := m.GetCollection(session).Find(filter).Count()
+	if err != nil {
+		return nil, err
+	}
+	if count < pageNo {
+		return &data, nil
+	}
+	skipNum := (pageNo - 1) * pageSize
+	err = m.GetCollection(session).Find(filter).Skip(skipNum).Limit(pageSize).All(&data)
+	switch err {
+	case nil:
+		return &data, nil
+	case mongo.ErrNotFound:
+		return nil, ErrNotFound
+	default:
+		return nil, err
+	}
+}
+
+func (m *defaultUserModel) FindUsersBySearchAndIds(ctx context.Context, search string, oIDs []bson.ObjectId, pageNo int, pageSize int) (*[]User, error) {
+	session, err := m.TakeSession()
+	if err != nil {
+		return nil, err
+	}
+
+	defer m.PutSession(session)
+	var data []User
+	filter := bson.M{
+		"_id": bson.M{
+			"$in": oIDs,
+		}}
+	if search != ""{
+		filter["name"]= bson.M{"$regex": bson.RegEx{
+			Pattern: fmt.Sprintf("%s", search),
+			Options: "im",
+		}}
+	}
+	count, err := m.GetCollection(session).Find(filter).Count()
+	if err != nil {
+		return nil, err
+	}
+	if count < pageNo {
+		return &data, nil
+	}
+	skipNum := (pageNo - 1) * pageSize
+	err = m.GetCollection(session).Find(filter).Skip(skipNum).Limit(pageSize).All(&data)
+	switch err {
+	case nil:
+		return &data, nil
+	case mongo.ErrNotFound:
+		return nil, ErrNotFound
+	default:
+		return nil, err
+	}
+}
+
 func (m *defaultUserModel) Update(ctx context.Context, data *User) error {
 	session, err := m.TakeSession()
 	if err != nil {
@@ -104,4 +181,54 @@ func (m *defaultUserModel) FindOneByOpenId(ctx context.Context, openId string) (
 	default:
 		return nil, err
 	}
+}
+
+func (m *defaultUserModel) UpdateFields(ctx context.Context, id string, data *map[string]interface{}) error {
+	session, err := m.TakeSession()
+	if err != nil {
+		return err
+	}
+
+	defer m.PutSession(session)
+
+	return m.GetCollection(session).Update(bson.M{"_id": bson.ObjectIdHex(id)},
+		bson.M{"$set": data})
+}
+
+// AddUserToSetByID 为用户的嵌套数组增加数据
+func (m *defaultUserModel) AddUserToSetByID(ctx context.Context, id string, key string, valueID string) error {
+	if !bson.IsObjectIdHex(id) || !bson.IsObjectIdHex(valueID) {
+		return ErrInvalidObjectId
+	}
+
+	session, err := m.TakeSession()
+	if err != nil {
+		return err
+	}
+
+	defer m.PutSession(session)
+
+	return m.GetCollection(session).Update(bson.M{"_id": bson.ObjectIdHex(id)},
+		bson.M{"$addToSet": bson.M{
+			key: bson.M{"_id":bson.ObjectIdHex(valueID)},
+		}})
+}
+
+// DeleteUserToSetByID 删除嵌套数组中的记录
+func (m *defaultUserModel) 	DeleteUserToSetByID(ctx context.Context, id string, key string, valueID string) error{
+	if !bson.IsObjectIdHex(id) || !bson.IsObjectIdHex(valueID) {
+		return ErrInvalidObjectId
+	}
+
+	session, err := m.TakeSession()
+	if err != nil {
+		return err
+	}
+
+	defer m.PutSession(session)
+
+	return m.GetCollection(session).Update(bson.M{"_id": bson.ObjectIdHex(id)},
+		bson.M{"$pull": bson.M{
+			key: bson.M{"_id":bson.ObjectIdHex(valueID)},
+		}})
 }
